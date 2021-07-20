@@ -21,9 +21,32 @@ type (
 const (
 	hostPrio = module.Priority
 	vmPrio   = hostPrio + 200
+	datastorePrio = vmPrio + 200
 )
 
 var (
+	datastoreCharts = func() Charts{
+		cs := Charts{}
+		panicIf(cs.Add(datastoreStorageCharts...))
+		return cs
+	}()
+	// Ref : https://www.vmware.com/support/developer/converter-sdk/conv51_apireference/disk_storutil_counters.html
+	datastoreStorageCharts = Charts{
+		{
+			ID:      "%s_disk_metrics",
+			Title:   "Disk Metrics",
+			Units:   "KiB",
+			Fam:     "datastore %s",
+			Ctx:     "vsphere.disk_metrics",
+			Dims: Dims{
+				{ID: "%s_disk.used.latest", Name:"used"},
+				{ID: "%s_disk.provisioned.latest", Name:"provisioned"},
+				{ID: "%s_disk.capacity.latest", Name:"capacity"},
+				{ID: "%s_disk.capacity.provisioned.average", Name:"provisioned average"},
+			},
+		},
+	}
+
 	vmCharts = func() Charts {
 		cs := Charts{}
 		panicIf(cs.Add(vmCPUCharts...))
@@ -406,6 +429,41 @@ func setVMChart(chart *Chart, vm *rs.VM, userID string, prio int) {
 	chart.Fam = fmt.Sprintf(chart.Fam, vm.Name, vm.Hier.Host.Name)
 	for _, d := range chart.Dims {
 		d.ID = fmt.Sprintf(d.ID, vm.ID)
+	}
+}
+
+func (vs *VSphere) updateDatastoresCharts(collected map[string]string) {
+	for id, userID := range collected {
+		if vs.charted[userID] {
+			continue
+		}
+		d := vs.resources.Datastores.Get(id)
+		if d == nil {
+			continue
+		}
+		vs.charted[userID] = true
+
+		cs := newDatastoreCharts(d, userID)
+		if err := vs.charts.Add(*cs...); err != nil {
+			vs.Error(err)
+		}
+	}
+}
+
+func newDatastoreCharts(datastore *rs.Datastore, userID string) *Charts {
+	cs := datastoreCharts.Copy()
+	for i, c := range *cs {
+		setDatastoreChart(c, datastore, userID, datastorePrio+i)
+	}
+	return cs
+}
+
+func setDatastoreChart(chart *Chart, datastore *rs.Datastore, userID string, prio int) {
+	chart.Priority = prio
+	chart.ID = fmt.Sprintf(chart.ID, userID)
+	chart.Fam = fmt.Sprintf(chart.Fam, datastore.Name)
+	for _, d := range chart.Dims {
+		d.ID = fmt.Sprintf(d.ID, datastore.ID)
 	}
 }
 

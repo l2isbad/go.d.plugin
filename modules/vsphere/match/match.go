@@ -16,6 +16,10 @@ type VMMatcher interface {
 	Match(*rs.VM) bool
 }
 
+type DatastoreMatcher interface {
+	Match(*rs.Datastore) bool
+}
+
 type (
 	hostDCMatcher      struct{ m matcher.Matcher }
 	hostClusterMatcher struct{ m matcher.Matcher }
@@ -24,10 +28,14 @@ type (
 	vmClusterMatcher   struct{ m matcher.Matcher }
 	vmHostMatcher      struct{ m matcher.Matcher }
 	vmVMMatcher        struct{ m matcher.Matcher }
+	datastoreDCMatcher struct{ m matcher.Matcher }
+    datastoreDatastoreMatcher struct{ m matcher.Matcher }
 	orHostMatcher      struct{ lhs, rhs HostMatcher }
 	orVMMatcher        struct{ lhs, rhs VMMatcher }
+	orDatastoreMatcher			struct{ lhs, rhs DatastoreMatcher}
 	andHostMatcher     struct{ lhs, rhs HostMatcher }
 	andVMMatcher       struct{ lhs, rhs VMMatcher }
+	andDatastoreMatcher	struct{ lhs, rhs DatastoreMatcher }
 )
 
 func (m hostDCMatcher) Match(host *rs.Host) bool      { return m.m.MatchString(host.Hier.DC.Name) }
@@ -37,10 +45,13 @@ func (m vmDCMatcher) Match(vm *rs.VM) bool            { return m.m.MatchString(v
 func (m vmClusterMatcher) Match(vm *rs.VM) bool       { return m.m.MatchString(vm.Hier.Cluster.Name) }
 func (m vmHostMatcher) Match(vm *rs.VM) bool          { return m.m.MatchString(vm.Hier.Host.Name) }
 func (m vmVMMatcher) Match(vm *rs.VM) bool            { return m.m.MatchString(vm.Name) }
+func (m datastoreDatastoreMatcher) Match(datastore *rs.Datastore) bool { return m.m.MatchString(datastore.Name) }
 func (m orHostMatcher) Match(host *rs.Host) bool      { return m.lhs.Match(host) || m.rhs.Match(host) }
 func (m orVMMatcher) Match(vm *rs.VM) bool            { return m.lhs.Match(vm) || m.rhs.Match(vm) }
+func (m orDatastoreMatcher) Match(datastore *rs.Datastore) bool { return m.lhs.Match(datastore) || m.rhs.Match(datastore) }
 func (m andHostMatcher) Match(host *rs.Host) bool     { return m.lhs.Match(host) && m.rhs.Match(host) }
 func (m andVMMatcher) Match(vm *rs.VM) bool           { return m.lhs.Match(vm) && m.rhs.Match(vm) }
+func (m andDatastoreMatcher) Match(datastore *rs.Datastore) bool { return m.lhs.Match(datastore) && m.rhs.Match(datastore) }
 
 func newAndHostMatcher(lhs, rhs HostMatcher, others ...HostMatcher) andHostMatcher {
 	m := andHostMatcher{lhs: lhs, rhs: rhs}
@@ -59,6 +70,16 @@ func newAndVMMatcher(lhs, rhs VMMatcher, others ...VMMatcher) andVMMatcher {
 		return m
 	default:
 		return newAndVMMatcher(m, others[0], others[1:]...)
+	}
+}
+
+func newAndDatastoreMatcher(lhs, rhs DatastoreMatcher, others ...DatastoreMatcher) andDatastoreMatcher {
+	m := andDatastoreMatcher{lhs: lhs, rhs: rhs}
+	switch len(others) {
+	case 0:
+		return m
+	default:
+		return newAndDatastoreMatcher(m, others[0], others[1:]...)
 	}
 }
 
@@ -82,9 +103,20 @@ func newOrVMMatcher(lhs, rhs VMMatcher, others ...VMMatcher) orVMMatcher {
 	}
 }
 
+func newOrDatastoreMatcher(lhs, rhs DatastoreMatcher, others ...DatastoreMatcher) orDatastoreMatcher {
+	m := orDatastoreMatcher{lhs: lhs, rhs: rhs}
+	switch len(others) {
+	case 0:
+		return m
+	default:
+		return newOrDatastoreMatcher(m, others[0], others[1:]...)
+	}
+}
+
 type (
 	VMIncludes   []string
 	HostIncludes []string
+	DatastoreIncludes []string
 )
 
 func (vi VMIncludes) Parse() (VMMatcher, error) {
@@ -133,11 +165,35 @@ func (hi HostIncludes) Parse() (HostMatcher, error) {
 	}
 }
 
+func (hi DatastoreIncludes) Parse() (DatastoreMatcher, error) {
+	var ms []DatastoreMatcher
+	for _, v := range hi {
+		m, err := parseDatastoreInclude(v)
+		if err != nil {
+			return nil, err
+		}
+		if m == nil {
+			continue
+		}
+		ms = append(ms, m)
+	}
+
+	switch len(ms) {
+	case 0:
+		return nil, nil
+	case 1:
+		return ms[0], nil
+	default:
+		return newOrDatastoreMatcher(ms[0], ms[1], ms[2:]...), nil
+	}
+}
+
 const (
 	datacenterIdx = iota
 	clusterIdx
 	hostIdx
 	vmIdx
+	datastoreIdx
 )
 
 func cleanInclude(include string) string {
@@ -211,6 +267,36 @@ func parseVMInclude(include string) (VMMatcher, error) {
 		return ms[0], nil
 	default:
 		return newAndVMMatcher(ms[0], ms[1], ms[2:]...), nil
+	}
+}
+
+func parseDatastoreInclude(include string) (DatastoreMatcher, error) {
+	if !isIncludeFormatValid(include) {
+		return nil, fmt.Errorf("bad include format: %s", include)
+	}
+
+	include = cleanInclude(include)
+	parts := strings.Split(include, "/")
+	var ms []DatastoreMatcher
+
+	for i, v := range parts {
+		m, err := parseSubInclude(v)
+		if err != nil {
+			return nil, err
+		}
+		switch i {
+		case datastoreIdx:
+			ms = append(ms, datastoreDatastoreMatcher{m})
+		}
+	}
+
+	switch len(ms) {
+	case 0:
+		return nil, nil
+	case 1:
+		return ms[0], nil
+	default:
+		return newAndDatastoreMatcher(ms[0], ms[1], ms[2:]...), nil
 	}
 }
 

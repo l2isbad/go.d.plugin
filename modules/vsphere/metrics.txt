@@ -326,3 +326,11 @@
 
 	vflashModule.numActiveVMDKs.latest [num, absolute, true] [Number of caches controlled by the virtual flash module]
 */
+/*
+	Datastore:
+
+	disk.used.latest
+	disk.provisioned.latest
+	disk.capacity.latest
+	disk.capacity.provisioned.average
+*/

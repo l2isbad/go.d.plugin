@@ -27,6 +27,7 @@ func TestDiscoverer_Discover(t *testing.T) {
 	assert.True(t, len(res.Clusters) > 0)
 	assert.True(t, len(res.Hosts) > 0)
 	assert.True(t, len(res.VMs) > 0)
+	assert.True(t, len(res.Datastores) > 0)
 	assert.True(t, isHierarchySet(res))
 	assert.True(t, isMetricListsCollected(res))
 }
@@ -45,6 +46,7 @@ func TestDiscoverer_discover(t *testing.T) {
 	assert.Lenf(t, raw.clusters, count.Cluster+dummyClusters, "clusters")
 	assert.Lenf(t, raw.hosts, count.Host, "hosts")
 	assert.Lenf(t, raw.vms, count.Machine, "hosts")
+	assert.Lenf(t, raw.datastores, count.Datastore, "datastores")
 }
 
 func TestDiscoverer_build(t *testing.T) {
@@ -61,6 +63,7 @@ func TestDiscoverer_build(t *testing.T) {
 	assert.Lenf(t, res.Clusters, len(raw.clusters), "clusters")
 	assert.Lenf(t, res.Hosts, len(raw.hosts), "hosts")
 	assert.Lenf(t, res.VMs, len(raw.vms), "hosts")
+	assert.Lenf(t, res.Datastores, len(raw.datastores), "datastores")
 }
 
 func TestDiscoverer_setHierarchy(t *testing.T) {
@@ -83,14 +86,16 @@ func TestDiscoverer_removeUnmatched(t *testing.T) {
 
 	d.HostMatcher = falseHostMatcher{}
 	d.VMMatcher = falseVMMatcher{}
+	d.DatastoreMatcher = falseDatastoreMatcher{}
 	raw, err := d.discover()
 	require.NoError(t, err)
 	res := d.build(raw)
 
-	numVMs, numHosts := len(res.VMs), len(res.Hosts)
-	assert.Equal(t, numVMs+numHosts, d.removeUnmatched(res))
+	numVMs, numHosts, numDatastores := len(res.VMs), len(res.Hosts), len(res.Datastores)
+	assert.Equal(t, numVMs+numHosts+numDatastores, d.removeUnmatched(res))
 	assert.Lenf(t, res.Hosts, 0, "hosts")
 	assert.Lenf(t, res.VMs, 0, "vms")
+	assert.Lenf(t, res.Datastores, 0, "datastores")
 }
 
 func TestDiscoverer_collectMetricLists(t *testing.T) {
@@ -165,6 +170,11 @@ func isMetricListsCollected(res *rs.Resources) bool {
 			return false
 		}
 	}
+	for _, s := range res.Datastores {
+		if s.MetricList == nil {
+			return false
+		}
+	}
 	return true
 }
 
@@ -175,3 +185,7 @@ func (falseHostMatcher) Match(*rs.Host) bool { return false }
 type falseVMMatcher struct{}
 
 func (falseVMMatcher) Match(*rs.VM) bool { return false }
+
+type falseDatastoreMatcher struct{}
+
+func (falseDatastoreMatcher) Match(*rs.Datastore) bool { return false }

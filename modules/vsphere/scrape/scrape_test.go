@@ -35,6 +35,14 @@ func TestScraper_ScrapeHosts(t *testing.T) {
 	assert.Len(t, metrics, len(res.Hosts))
 }
 
+func TestScraper_ScrapeDatastores(t *testing.T) {
+	s, res, teardown := prepareScraper(t)
+	defer teardown()
+
+	metrics := s.ScrapeDatastores(res.Datastores)
+	assert.Len(t, metrics, len(res.Datastores))
+}
+
 func prepareScraper(t *testing.T) (s *Scraper, res *rs.Resources, teardown func()) {
 	model, srv := createSim(t)
 	teardown = func() { model.Remove(); srv.Close() }

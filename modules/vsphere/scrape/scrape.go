@@ -65,6 +65,18 @@ func (c Scraper) ScrapeVMs(vms rs.VMs) []performance.EntityMetric {
 	return ms
 }
 
+func (c Scraper) ScrapeDatastores(datastores rs.Datastores) []performance.EntityMetric {
+	t := time.Now()
+	pqs := newDatastoresPerfQuerySpecs(datastores)
+	ms := c.scrapeMetrics(pqs)
+	c.Debugf("scraping : scraped metrics for %d/%d datastores, process took %s",
+		len(ms),
+		len(datastores),
+		time.Since(t),
+	)
+	return ms
+}
+
 func (c Scraper) scrapeMetrics(pqs []types.PerfQuerySpec) []performance.EntityMetric {
 	tc := newThrottledCaller(5)
 	var ms []performance.EntityMetric
@@ -109,6 +121,7 @@ func chunkify(pqs []types.PerfQuerySpec, chunkSize int) (chunks [][]types.PerfQu
 const (
 	pqsMaxSample  = 1
 	pqsIntervalID = 20
+	pqsIntervalIDvc = 300
 	pqsFormat     = "normal"
 )
 
@@ -135,6 +148,21 @@ func newVMsPerfQuerySpecs(vms rs.VMs) []types.PerfQuerySpec {
 			MaxSample:  pqsMaxSample,
 			MetricId:   vm.MetricList,
 			IntervalId: pqsIntervalID,
+			Format:     pqsFormat,
+		}
+		pqs = append(pqs, pq)
+	}
+	return pqs
+}
+
+func newDatastoresPerfQuerySpecs(datastores rs.Datastores) []types.PerfQuerySpec {
+	pqs := make([]types.PerfQuerySpec, 0, len(datastores))
+	for _, datastore := range datastores {
+		pq := types.PerfQuerySpec{
+			Entity:     datastore.Ref,
+			MaxSample:  pqsMaxSample,
+			MetricId:   datastore.MetricList,
+			IntervalId: pqsIntervalIDvc,
 			Format:     pqsFormat,
 		}
 		pqs = append(pqs, pq)

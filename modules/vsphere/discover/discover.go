@@ -19,6 +19,7 @@ type Client interface {
 	ComputeResources(pathSet ...string) ([]mo.ComputeResource, error)
 	Hosts(pathSet ...string) ([]mo.HostSystem, error)
 	VirtualMachines(pathSet ...string) ([]mo.VirtualMachine, error)
+	Datastores(pathSet ...string) ([]mo.Datastore, error)
 
 	CounterInfoByName() (map[string]*types.PerfCounterInfo, error)
 }
@@ -34,6 +35,7 @@ type Discoverer struct {
 	Client
 	match.HostMatcher
 	match.VMMatcher
+	match.DatastoreMatcher
 }
 
 type resources struct {
@@ -42,6 +44,7 @@ type resources struct {
 	clusters []mo.ComputeResource
 	hosts    []mo.HostSystem
 	vms      []mo.VirtualMachine
+	datastores []mo.Datastore
 }
 
 func (d Discoverer) Discover() (*rs.Resources, error) {
@@ -61,9 +64,10 @@ func (d Discoverer) Discover() (*rs.Resources, error) {
 
 	numH := len(res.Hosts)
 	numV := len(res.VMs)
+	numS := len(res.Datastores)
 	removed := d.removeUnmatched(res)
-	if removed == (numH + numV) {
-		return nil, fmt.Errorf("all resoursces were filtered (%d hosts, %d vms)", numH, numV)
+	if removed == (numH + numV + numS) {
+		return nil, fmt.Errorf("all resources were filtered (%d hosts, %d vms, %d numS)", numH, numV, numS)
 	}
 
 	err = d.collectMetricLists(res)
@@ -71,11 +75,13 @@ func (d Discoverer) Discover() (*rs.Resources, error) {
 		return nil, fmt.Errorf("collecting metric lists : %v", err)
 	}
 
-	d.Infof("discovering : discovered %d/%d hosts, %d/%d vms, the whole process took %s",
+	d.Infof("discovering : discovered %d/%d hosts, %d/%d vms, %d/%d datastores, the whole process took %s",
 		len(res.Hosts),
 		len(raw.hosts),
 		len(res.VMs),
 		len(raw.vms),
+		len(res.Datastores),
+		len(raw.datastores),
 		time.Since(startTime))
 
 	return res, nil
@@ -88,6 +94,7 @@ var (
 	clusterPathSet    = []string{"name", "parent"}
 	hostPathSet       = []string{"name", "parent", "runtime.powerState", "summary.overallStatus"}
 	vmPathSet         = []string{"name", "runtime.host", "runtime.powerState", "summary.overallStatus"}
+	datastorePathSet  = []string{"name", "summary.accessible"}
 )
 
 func (d Discoverer) discover() (*resources, error) {
@@ -129,21 +136,30 @@ func (d Discoverer) discover() (*resources, error) {
 	}
 	d.Debugf("discovering : found %d vms, process took %s", len(hosts), time.Since(t))
 
+	t = time.Now()
+	datastores, err := d.Datastores(datastorePathSet...)
+	if err != nil {
+		return nil, err
+	}
+	d.Debugf("discovering : found %d datastores, process took %s", len(datastores), time.Since(t))
+
 	raw := resources{
 		dcs:      datacenters,
 		folders:  folders,
 		clusters: clusters,
 		hosts:    hosts,
 		vms:      vms,
+		datastores: datastores,
 	}
 
-	d.Infof("discovering : found %d dcs, %d folders, %d clusters (%d dummy), %d hosts, %d vms, process took %s",
+	d.Infof("discovering : found %d dcs, %d folders, %d clusters (%d dummy), %d hosts, %d vms, %d datastores, process took %s",
 		len(raw.dcs),
 		len(raw.folders),
 		len(clusters),
 		numOfDummyClusters(clusters),
 		len(raw.hosts),
 		len(raw.vms),
+		len(raw.datastores),
 		time.Since(start),
 	)
 

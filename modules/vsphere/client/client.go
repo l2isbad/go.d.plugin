@@ -24,6 +24,7 @@ const (
 	computeResource = "ComputeResource"
 	hostSystem      = "HostSystem"
 	virtualMachine  = "VirtualMachine"
+	datastore       = "Datastore"
 
 	maxIdleConnections = 32
 )
@@ -170,6 +171,11 @@ func (c *Client) Hosts(pathSet ...string) (hosts []mo.HostSystem, err error) {
 
 func (c *Client) VirtualMachines(pathSet ...string) (vms []mo.VirtualMachine, err error) {
 	err = c.root.Retrieve(context.Background(), []string{virtualMachine}, pathSet, &vms)
+	return
+}
+
+func (c *Client) Datastores(pathSet ...string) (datastores []mo.Datastore, err error) {
+	err = c.root.Retrieve(context.Background(), []string{datastore}, pathSet, &datastores)
 	return
 }
 

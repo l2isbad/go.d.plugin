@@ -47,6 +47,13 @@ It produces the following charts:
 - Overall Alarm Status in `status`
 - System Uptime in `seconds`
 
+#### Datastore
+
+- Storage Capacity in `KiB`
+- Storage Provisioned in `KiB`
+- Storage used in `KiB`
+- Storage Provisioned average in `KiB`
+
 ## Configuration
 
 Edit the `go.d/vsphere.conf` configuration file using `edit-config` from the
@@ -67,6 +74,7 @@ jobs:
     password: somepassword
     host_include: [ '/*' ]
     vm_include: [ '/*' ]
+    datastore_include: ['/*']
 
   - name: vcenter2
     url: https://203.0.113.10
@@ -74,17 +82,19 @@ jobs:
     password: somepassword
     host_include: [ '/*' ]
     vm_include: [ '/*' ]
+    datastore_include: ['/*']
 ```
 
 For all available options please see
 module [configuration file](https://github.com/netdata/go.d.plugin/blob/master/config/go.d/vsphere.conf).
 
-## Hosts/vms filtering
+## Hosts/vms/datastores filtering
 
 Module supports filtering hosts and vms. Filtering options are `host_include` and `vm_include`.
 
 - `host_include` is a list of match patterns: `/Dc pattern[/Cluster pattern/Host pattern]`.
 - `vm_include` is a list of match patterns: `/Dc pattern[/Cluster pattern/Host pattern/VM name]`.
+- `datastore_include` is a list of match patterns: `/Dc pattern[/Datastore pattern]`.
 
 Pattern should start with `/`. It matches name,
 syntax: [simple patterns](https://docs.netdata.cloud/libnetdata/simple_pattern/).
@@ -95,6 +105,8 @@ Examples:
     host_include: # filter all hosts
       - '/!*'
     vm_include: # allow all vms
+      - '/*'
+    datastore_include:
       - '/*'
 ```
 
@@ -127,22 +139,25 @@ Example (all not related debug lines were removed):
 [ DEBUG ] vsphere[vsphere] discover.go:116 discovering : found 3 clusters, process took 47.722692ms
 [ DEBUG ] vsphere[vsphere] discover.go:123 discovering : found 2 hosts, process took 52.966995ms
 [ DEBUG ] vsphere[vsphere] discover.go:130 discovering : found 2 vms, process took 49.832979ms
-[ INFO  ] vsphere[vsphere] discover.go:140 discovering : found 3 dcs, 12 folders, 3 clusters (2 dummy), 2 hosts, 3 vms, process took 249.655993ms
+[ DEBUG ] vsphere[vsphere] discover.go:130 discovering : found 4 datastores, process took 65.457101ms
+[ INFO  ] vsphere[vsphere] discover.go:140 discovering : found 3 dcs, 12 folders, 3 clusters (2 dummy), 2 hosts, 3 vms, 4/4 datastores, process took 249.655993ms
 [ DEBUG ] vsphere[vsphere] build.go:12 discovering : building : starting building resources process
-[ INFO  ] vsphere[vsphere] build.go:23 discovering : building : built 3/3 dcs, 12/12 folders, 3/3 clusters, 2/2 hosts, 3/3 vms, process took 63.3µs
+[ INFO  ] vsphere[vsphere] build.go:23 discovering : building : built 3/3 dcs, 12/12 folders, 3/3 clusters, 2/2 hosts, 3/3 vms, 4/4 datastores, process took 63.3µs
 [ DEBUG ] vsphere[vsphere] hierarchy.go:10 discovering : hierarchy : start setting resources hierarchy process
-[ INFO  ] vsphere[vsphere] hierarchy.go:18 discovering : hierarchy : set 3/3 clusters, 2/2 hosts, 3/3 vms, process took 6.522µs
+[ INFO  ] vsphere[vsphere] hierarchy.go:18 discovering : hierarchy : set 3/3 clusters, 2/2 hosts, 3/3 vms, 4/4 datastores, process took 6.522µs
 [ DEBUG ] vsphere[vsphere] filter.go:24 discovering : filtering : starting filtering resources process
 [ DEBUG ] vsphere[vsphere] filter.go:45 discovering : filtering : removed 0 unmatched hosts
 [ DEBUG ] vsphere[vsphere] filter.go:56 discovering : filtering : removed 0 unmatched vms
-[ INFO  ] vsphere[vsphere] filter.go:29 discovering : filtering : filtered 0/2 hosts, 0/3 vms, process took 42.973µs
+[ DEBUG ] vsphere[vsphere] filter.go:56 discovering : filtering : removed 0 unmatched datastores
+[ INFO  ] vsphere[vsphere] filter.go:29 discovering : filtering : filtered 0/2 hosts, 0/3 vms, 0/4 datastores, process took 42.973µs
 [ DEBUG ] vsphere[vsphere] metric_lists.go:14 discovering : metric lists : starting resources metric lists collection process
-[ INFO  ] vsphere[vsphere] metric_lists.go:30 discovering : metric lists : collected metric lists for 2/2 hosts, 3/3 vms, process took 275.60764ms
-[ INFO  ] vsphere[vsphere] discover.go:74 discovering : discovered 2/2 hosts, 3/3 vms, the whole process took 525.614041ms
+[ INFO  ] vsphere[vsphere] metric_lists.go:30 discovering : metric lists : collected metric lists for 2/2 hosts, 3/3 vms, 4/4 datastores, process took 275.60764ms
+[ INFO  ] vsphere[vsphere] discover.go:74 discovering : discovered 2/2 hosts, 3/3 vms, 4/4 datastores, the whole process took 525.614041ms
 [ INFO  ] vsphere[vsphere] discover.go:11 starting discovery process, will do discovery every 5m0s
 [ DEBUG ] vsphere[vsphere] collect.go:11 starting collection process
 [ DEBUG ] vsphere[vsphere] scrape.go:48 scraping : scraped metrics for 2/2 hosts, process took 96.257374ms
 [ DEBUG ] vsphere[vsphere] scrape.go:60 scraping : scraped metrics for 3/3 vms, process took 57.879697ms
+[ DEBUG ] vsphere[vsphere] scrape.go:60 scraping : scraped metrics for 4/4 datastores, process took 57.879697ms
 [ DEBUG ] vsphere[vsphere] collect.go:23 metrics collected, process took 154.77997ms
 
 ```

@@ -37,6 +37,7 @@ func New() *VSphere {
 		DiscoveryInterval: web.Duration{Duration: time.Minute * 5},
 		HostsInclude:      []string{"/*"},
 		VMsInclude:        []string{"/*"},
+		DatastoresInclude: []string{"/*"},
 	}
 
 	return &VSphere{
@@ -45,6 +46,7 @@ func New() *VSphere {
 		charts:          &Charts{},
 		discoveredHosts: make(map[string]int),
 		discoveredVMs:   make(map[string]int),
+		discoveredDatastores: make(map[string]int),
 		charted:         make(map[string]bool),
 	}
 }
@@ -56,6 +58,7 @@ type discoverer interface {
 type scraper interface {
 	ScrapeHosts(rs.Hosts) []performance.EntityMetric
 	ScrapeVMs(rs.VMs) []performance.EntityMetric
+	ScrapeDatastores(rs.Datastores) []performance.EntityMetric
 }
 
 type Config struct {
@@ -63,8 +66,10 @@ type Config struct {
 	DiscoveryInterval web.Duration                                   `yaml:"discovery_interval"`
 	HostsInclude      match.HostIncludes                             `yaml:"host_include"`
 	VMsInclude        match.VMIncludes                               `yaml:"vm_include"`
+	DatastoresInclude match.DatastoreIncludes                        `yaml:"datastore_include"`
 	HostMetrics       struct{ Name, Cluster, DataCenter bool }       `yaml:"host_metrics"`
 	VMMetrics         struct{ Name, Host, Cluster, DataCenter bool } `yaml:"vm_metrics"`
+	DatastoreMetrics  struct{ Name, Cluster, DataCenter bool}        `yaml:"datastore_metrics"`
 }
 
 type VSphere struct {
@@ -80,6 +85,7 @@ type VSphere struct {
 	discoveryTask   *task
 	discoveredHosts map[string]int
 	discoveredVMs   map[string]int
+	discoveredDatastores map[string]int
 	charted         map[string]bool
 	charts          *Charts
 }
@@ -119,6 +125,13 @@ func (vs *VSphere) createDiscoverer(c *client.Client) error {
 	}
 	if vmm != nil {
 		d.VMMatcher = vmm
+	}
+	dm, err := vs.DatastoresInclude.Parse()
+	if err!= nil {
+		return err
+	}
+	if dm != nil {
+		d.DatastoreMatcher = dm
 	}
 
 	vs.discoverer = d

@@ -47,6 +47,7 @@ type Resources struct {
 	Clusters    Clusters
 	Hosts       Hosts
 	VMs         VMs
+	Datastores	Datastores
 }
 
 type (
@@ -104,6 +105,13 @@ type (
 		MetricList    performance.MetricList
 		Ref           types.ManagedObjectReference
 	}
+	Datastore struct {
+		Name          string
+		ID            string
+		Accessible    bool
+		MetricList    performance.MetricList
+		Ref           types.ManagedObjectReference
+	}
 )
 
 func (v HierarchyValue) IsSet() bool          { return v.ID != "" && v.Name != "" }
@@ -119,6 +127,7 @@ type (
 	Clusters    map[string]*Cluster
 	Hosts       map[string]*Host
 	VMs         map[string]*VM
+	Datastores  map[string]*Datastore
 )
 
 func (dcs DataCenters) Put(dc *Datacenter)        { dcs[dc.ID] = dc }
@@ -133,3 +142,6 @@ func (hs Hosts) Get(id string) *Host              { return hs[id] }
 func (vs VMs) Put(vm *VM)                         { vs[vm.ID] = vm }
 func (vs VMs) Remove(id string)                   { delete(vs, id) }
 func (vs VMs) Get(id string) *VM                  { return vs[id] }
+func (ds Datastores) Put(datastore *Datastore)    { ds[datastore.ID] = datastore }
+func (ds Datastores) Remove(id string)            { delete(ds, id) }
+func (ds Datastores) Get(id string) *Datastore    { return ds[id] }

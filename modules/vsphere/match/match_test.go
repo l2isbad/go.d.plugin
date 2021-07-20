@@ -101,6 +101,7 @@ func TestAndVMMatcher_Match(t *testing.T) {
 	}
 }
 
+
 func TestHostIncludes_Parse(t *testing.T) {
 	tests := map[string]struct {
 		valid    bool
@@ -274,6 +275,7 @@ func TestVMIncludes_Parse(t *testing.T) {
 		})
 	}
 }
+
 
 func prepareIncludes(include string) []string {
 	trimmed := strings.Trim(include, "[]")

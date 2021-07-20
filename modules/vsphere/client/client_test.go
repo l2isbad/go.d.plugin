@@ -120,6 +120,15 @@ func TestClient_VirtualMachines(t *testing.T) {
 	assert.NotEmpty(t, vms)
 }
 
+func TestClient_Datastores(t *testing.T) {
+	client, teardown := prepareClient(t)
+	defer teardown()
+
+	datastores, err := client.Datastores()
+	assert.NoError(t, err)
+	assert.NotEmpty(t, datastores)
+}
+
 func TestClient_PerformanceMetrics(t *testing.T) {
 	client, teardown := prepareClient(t)
 	defer teardown()

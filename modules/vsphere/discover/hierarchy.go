@@ -2,7 +2,6 @@ package discover
 
 import (
 	"time"
-
 	rs "github.com/netdata/go.d.plugin/modules/vsphere/resources"
 )
 
@@ -14,7 +13,7 @@ func (d Discoverer) setHierarchy(res *rs.Resources) error {
 	h := d.setHostsHierarchy(res)
 	v := d.setVMsHierarchy(res)
 
-	// notSet := len(res.Clusters) + len(res.Hosts) + len(res.VMs) - (c + h + v)
+	// notSet := len(res.Clusters) + len(res.Hosts) + len(res.VMs) + len(res.Datastores) - (c + h + v + d)
 	d.Infof("discovering : hierarchy : set %d/%d clusters, %d/%d hosts, %d/%d vms, process took %s",
 		c, len(res.Clusters),
 		h, len(res.Hosts),
